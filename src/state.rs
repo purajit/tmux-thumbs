@@ -468,4 +468,20 @@ mod tests {
     assert_eq!(results.get(7).unwrap().text.clone(), "8888");
     assert_eq!(results.get(8).unwrap().text.clone(), "https://crates.io/23456/fd70b569");
   }
+
+  #[test]
+  fn hint_positioning() {
+    // first line contains a single matched string, second line has a prefix, third line has a ligature
+    let lines = split("20240913-lorem-ipsum\n-20240913-lorem-ipsum-1\n↳20240913-lorem-ipsum-2");
+    let custom = [].to_vec();
+    let results = State::new(&lines, "abcd", &custom).matches(false, true);
+
+    assert_eq!(results.get(0).unwrap().x.clone(), 0);
+    assert_eq!(results.get(0).unwrap().y.clone(), 0);
+    assert_eq!(results.get(1).unwrap().x.clone(), 1);
+    assert_eq!(results.get(1).unwrap().y.clone(), 1);
+    // this should be 1, but tmux-thumbs doesn't handle ligatures
+    assert_eq!(results.get(2).unwrap().x.clone(), 3);
+    assert_eq!(results.get(2).unwrap().y.clone(), 2);
+  }
 }
