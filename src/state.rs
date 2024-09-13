@@ -482,7 +482,7 @@ mod tests {
     assert_eq!(results.get(1).unwrap().y.clone(), 0);
     assert_eq!(results.get(2).unwrap().x.clone(), 1);
     assert_eq!(results.get(2).unwrap().y.clone(), 1);
-    // this should be 1, but current regex matching doesn't treat ligatures as a single character
+    // this should be 1, but regex matching won't be aware of ligatures
     assert_eq!(results.get(3).unwrap().x.clone(), 3);
     assert_eq!(results.get(3).unwrap().y.clone(), 2);
   }
