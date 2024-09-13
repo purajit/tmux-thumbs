@@ -501,6 +501,8 @@ I was curious to know if this was possible to be written in [Rust](https://www.r
 
 ## Troubleshooting
 
+> `tmux-thumbs` isn't as fast as expected
+
 `tmux-thumbs` must work lighting fast. If you are facing a slow performance capturing the screen hints try to configure Tmux with these settings:
 
 ```
@@ -511,14 +513,22 @@ set -g visual-silence on
 
 You can read a bit more about this issue here: https://github.com/fcsonline/tmux-thumbs/issues/88
 
-Every time I use `tmux-thumbs`, dead panes are created. Just review if you have
-this setting on:
+> Every time I use `tmux-thumbs`, dead panes are created. 
+
+Just review if you have this setting on:
 
 ```
 set -g remain-on-exit on
 ```
 
 You can read a bit more about this issue here: https://github.com/fcsonline/tmux-thumbs/issues/84
+
+> Sometimes I see the hints showing up in the wrong starting location.
+
+This is likely because the lines with the incorrectly-positioned hints have ligatures. Many CLI utilities
+and prompt themes have ligatures.
+
+You can read a bit more about this issue here: https://github.com/fcsonline/tmux-thumbs/issues/158 https://github.com/fcsonline/tmux-thumbs/pull/161
 
 ## Donations
 
