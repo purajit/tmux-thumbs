@@ -1,5 +1,6 @@
 use super::*;
 use std::char;
+use std::fs;
 use std::io::{stdout, Read, Write};
 use termion::async_stdin;
 use termion::event::Key;
@@ -8,6 +9,7 @@ use termion::raw::IntoRawMode;
 use termion::screen::AlternateScreen;
 use termion::{color, cursor};
 
+use rustybuzz::{Face, UnicodeBuffer};
 use unicode_width::UnicodeWidthStr;
 
 pub struct View<'a> {
@@ -25,6 +27,7 @@ pub struct View<'a> {
   background_color: Box<dyn color::Color>,
   hint_background_color: Box<dyn color::Color>,
   hint_foreground_color: Box<dyn color::Color>,
+  font_file: &'a str,
   chosen: Vec<(String, bool)>,
 }
 
@@ -49,6 +52,7 @@ impl<'a> View<'a> {
     background_color: Box<dyn color::Color>,
     hint_foreground_color: Box<dyn color::Color>,
     hint_background_color: Box<dyn color::Color>,
+    font_file: &'a str,
   ) -> View<'a> {
     let matches = state.matches(reverse, unique);
     let skip = if reverse { matches.len() - 1 } else { 0 };
@@ -68,6 +72,7 @@ impl<'a> View<'a> {
       background_color,
       hint_foreground_color,
       hint_background_color,
+      font_file,
       chosen: vec![],
     }
   }
@@ -90,6 +95,27 @@ impl<'a> View<'a> {
     } else {
       hint.to_string()
     }
+  }
+
+  fn get_ligature_offset(&self, text: &str) -> u32 {
+    let font_data = fs::read(self.font_file).expect("Font file not found");
+    let face = Face::from_slice(&font_data, 0).expect("Failed to load font face");
+
+    let mut buffer = UnicodeBuffer::new();
+    buffer.push_str(text);
+    let glyph_buffer = rustybuzz::shape(&face, &[], buffer);
+
+    let mut ligature_offset = 0;
+    let mut prev_cluster_index = 0;
+    for glyph_info in glyph_buffer.glyph_infos() {
+      let cluster_size = glyph_info.cluster - prev_cluster_index;
+      if cluster_size > 1 {
+        ligature_offset += cluster_size - 1;
+      }
+      prev_cluster_index = glyph_info.cluster;
+    }
+
+    ligature_offset
   }
 
   fn render(&self, stdout: &mut dyn Write, typed_hint: &str) -> () {
@@ -126,14 +152,15 @@ impl<'a> View<'a> {
       // Find long utf sequences and extract it from mat.x
       let line = &self.state.lines[mat.y as usize];
       let prefix = &line[0..mat.x as usize];
+      let ligature_offset = if self.font_file.is_empty() {0} else {self.get_ligature_offset(prefix)};
       let extra = prefix.width_cjk() - prefix.chars().count();
-      let offset = (mat.x as u16) - (extra as u16);
+      let offset = (mat.x as u16) - (extra as u16) - (ligature_offset as u16);
       let text = self.make_hint_text(mat.text);
 
       print!(
-        "{goto}{background}{foregroud}{text}{resetf}{resetb}",
+        "{goto}{background}{foreground}{text}{resetf}{resetb}",
         goto = cursor::Goto(offset + 1, mat.y as u16 + 1),
-        foregroud = color::Fg(&**selected_color),
+        foreground = color::Fg(&**selected_color),
         background = color::Bg(&**selected_background_color),
         resetf = color::Fg(color::Reset),
         resetb = color::Bg(color::Reset),
@@ -152,9 +179,9 @@ impl<'a> View<'a> {
         let final_position = std::cmp::max(offset as i16 + extra_position as i16, 0);
 
         print!(
-          "{goto}{background}{foregroud}{text}{resetf}{resetb}",
+          "{goto}{background}{foreground}{text}{resetf}{resetb}",
           goto = cursor::Goto(final_position as u16 + 1, mat.y as u16 + 1),
-          foregroud = color::Fg(&*self.hint_foreground_color),
+          foreground = color::Fg(&*self.hint_foreground_color),
           background = color::Bg(&*self.hint_background_color),
           resetf = color::Fg(color::Reset),
           resetb = color::Bg(color::Reset),
@@ -163,9 +190,9 @@ impl<'a> View<'a> {
 
         if hint.starts_with(typed_hint) {
           print!(
-            "{goto}{background}{foregroud}{text}{resetf}{resetb}",
+            "{goto}{background}{foreground}{text}{resetf}{resetb}",
             goto = cursor::Goto(final_position as u16 + 1, mat.y as u16 + 1),
-            foregroud = color::Fg(&*self.multi_foreground_color),
+            foreground = color::Fg(&*self.multi_foreground_color),
             background = color::Bg(&*self.multi_background_color),
             resetf = color::Fg(color::Reset),
             resetb = color::Bg(color::Reset),
@@ -337,6 +364,7 @@ mod tests {
       hint_background_color: colors::get_color("default"),
       hint_foreground_color: colors::get_color("default"),
       chosen: vec![],
+      font_file: "MononokiNerdFontPropo-Regular.ttf",
     };
 
     let result = view.make_hint_text("a");
@@ -345,5 +373,8 @@ mod tests {
     view.contrast = true;
     let result = view.make_hint_text("a");
     assert_eq!(result, "[a]".to_string());
+
+    let result = view.get_ligature_offset(&"↳ 20240913-ligatures-test".to_string());
+    assert_eq!(result, 2)
   }
 }

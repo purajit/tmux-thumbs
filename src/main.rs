@@ -136,6 +136,12 @@ fn app_args<'a>() -> clap::ArgMatches<'a> {
         .short("t")
         .takes_value(true),
     )
+    .arg(
+      Arg::with_name("font_file")
+        .help("Font file to use to calculate ligatures; will skip ligature counting if not provided")
+        .long("font-file")
+        .default_value(""),
+    )
     .get_matches()
 }
 
@@ -163,6 +169,7 @@ fn main() {
   let select_background_color = colors::get_color(args.value_of("select_background_color").unwrap());
   let multi_foreground_color = colors::get_color(args.value_of("multi_foreground_color").unwrap());
   let multi_background_color = colors::get_color(args.value_of("multi_background_color").unwrap());
+  let font_file = args.value_of("font_file").unwrap();
 
   let stdin = io::stdin();
   let mut handle = stdin.lock();
@@ -190,6 +197,7 @@ fn main() {
       background_color,
       hint_foreground_color,
       hint_background_color,
+      font_file,
     );
 
     viewbox.present()
